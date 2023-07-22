@@ -2,7 +2,7 @@ import ctypes
 import time
 import threading
 import psutil
-from tkinter import Tk, Label, Entry, Button, StringVar
+from tkinter import Tk, Label, Entry, Button, Checkbutton, StringVar, IntVar
 
 # 윈도우 알림 함수
 def message_box(title, text):
@@ -13,8 +13,10 @@ def check_battery():
     while True:
         battery = psutil.sensors_battery()
         percent = battery.percent
+        charging = battery.power_plugged
 
-        if percent > float(max_battery.get()) or percent < float(min_battery.get()):
+        if (not (charging and disable_min_battery_alert_on_charging.get()) and percent < float(min_battery.get())) or \
+           (not (charging and disable_max_battery_alert_on_discharging.get()) and percent > float(max_battery.get())):
             message_box("경고", f"배터리 상태가 설정된 범위를 벗어났습니다. 현재 배터리: {percent}%")
 
         time.sleep(int(alert_interval.get()) * 60)
@@ -26,6 +28,8 @@ def read_settings():
             max_battery.set(file.readline().strip())
             min_battery.set(file.readline().strip())
             alert_interval.set(file.readline().strip())
+            disable_min_battery_alert_on_charging.set(int(file.readline().strip()))
+            disable_max_battery_alert_on_discharging.set(int(file.readline().strip()))
     except FileNotFoundError:
         pass  # 파일이 없으면 아무것도 하지 않음
 
@@ -35,6 +39,8 @@ def write_settings():
         file.write(max_battery.get() + "\n")
         file.write(min_battery.get() + "\n")
         file.write(alert_interval.get() + "\n")
+        file.write(str(disable_min_battery_alert_on_charging.get()) + "\n")
+        file.write(str(disable_max_battery_alert_on_discharging.get()) + "\n")
 
 # 배터리 체크 스레드 실행 함수
 def start_check_battery_thread():
@@ -55,12 +61,17 @@ Label(root, text="알림 주기 (분)").grid(row=2, column=0)
 max_battery = StringVar()
 min_battery = StringVar()
 alert_interval = StringVar()
+disable_min_battery_alert_on_charging = IntVar()
+disable_max_battery_alert_on_discharging = IntVar()
 
 Entry(root, textvariable=max_battery).grid(row=0, column=1)
 Entry(root, textvariable=min_battery).grid(row=1, column=1)
 Entry(root, textvariable=alert_interval).grid(row=2, column=1)
 
-Button(root, text="설정 저장", command=lambda: [write_settings(), start_check_battery_thread()]).grid(row=3, column=0, columnspan=2)
+Checkbutton(root, text="충전 중일 때 최소 배터리 경고 끄기", variable=disable_min_battery_alert_on_charging).grid(row=3, column=0, columnspan=2, sticky='W')
+Checkbutton(root, text="충전 중이 아닐 때 최대 배터리 경고 끄기", variable=disable_max_battery_alert_on_discharging).grid(row=4, column=0, columnspan=2, sticky='W')
+
+Button(root, text="설정 저장", command=lambda: [write_settings(), start_check_battery_thread()]).grid(row=5, column=0, columnspan=2)
 
 check_battery_thread = None
 read_settings()  # 프로그램 시작 시 저장된 설정 읽기
