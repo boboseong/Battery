@@ -19,6 +19,7 @@ def check_battery():
            (not (charging and disable_max_battery_alert_on_discharging.get()) and percent > float(max_battery.get())):
             message_box("경고", f"배터리 상태가 설정된 범위를 벗어났습니다. 현재 배터리: {percent}%")
 
+
         time.sleep(int(alert_interval.get()) * 60)
 
 # 설정 파일 읽기 함수
